@@ -3,37 +3,41 @@ from tkinter import messagebox
 from pkg.generate import generate_prime
 from pkg.checking import trial_division_method, test_ferma
 from pkg.ecdsa import create_curve, generate_keys, sign_message, verify_signature
+from pkg.encryption import encrypt_message_with_curve
+from pkg.decryption import decrypt_message_with_curve
 
 
 class App:
     def __init__(self, root):
         self.root = root
         self.root.title("Главное меню")
-        self.root.geometry("400x200")
+        self.root.geometry("400x150")
 
-        # Кнопка для работы с простыми числами
         self.prime_button = tk.Button(
-            self.root, text="Работа с простыми числами", command=self.open_prime_menu
+            self.root, text="Тестирование простых чисел", command=self.open_prime_menu
         )
         self.prime_button.pack(pady=10)
 
-        # Кнопка для работы с ECDSA
         self.ecdsa_button = tk.Button(
-            self.root, text="ECDSA: Подпись и проверка сообщений", command=self.open_ecdsa_windows
+            self.root, text="Подпись и проверка сообщений по протоколу ECDSA", command=self.open_ecdsa_windows
         )
         self.ecdsa_button.pack(pady=10)
 
     def open_prime_menu(self):
         """Открытие окна работы с простыми числами."""
-        PrimeMenu(self.root)
+        PrimeWindow(self.root)
 
     def open_ecdsa_windows(self):
         """Открытие окон взаимодействия двух пользователей."""
-        ECDSAUserWindow(self.root, "Пользователь 1")
-        ECDSAUserWindow(self.root, "Пользователь 2")
+        alice_window = WindowECDSA(self.root, "Alice")
+        bob_window = WindowECDSA(self.root, "Bob")
+
+        # Устанавливаем связь между окнами
+        alice_window.partner_window = bob_window
+        bob_window.partner_window = alice_window
 
 
-class PrimeMenu:
+class PrimeWindow:
     def __init__(self, root):
         self.window = tk.Toplevel(root)
         self.window.title("Работа с простыми числами")
@@ -89,27 +93,24 @@ class PrimeCheckWindow:
 
         self.number = number
 
-        # Заголовок
         self.label = tk.Label(self.window, text=f"Проверяемое число: {self.number}", font=("Arial", 16))
         self.label.pack(pady=10)
 
-        # Рамка для метода пробных делений
         self.trial_frame = tk.LabelFrame(self.window, text="Метод пробных делений", padx=10, pady=10)
         self.trial_frame.pack(pady=10, fill="x", padx=20)
 
         self.trial_input = tk.Entry(self.trial_frame)
         self.trial_input.pack(pady=5)
-        self.trial_input.insert(0, "25")  # По умолчанию 25 простых чисел
+        self.trial_input.insert(0, "1")
 
         self.trial_button = tk.Button(self.trial_frame, text="Проверить методом пробных делений", command=self.check_trial_division)
         self.trial_button.pack()
 
-        # Рамка для теста Ферма
         self.ferma_frame = tk.LabelFrame(self.window, text="Тест Ферма", padx=10, pady=10)
         self.ferma_frame.pack(pady=10, fill="x", padx=20)
 
         self.ferma_inputs = []
-        for _ in range(5):  # 5 полей для ввода оснований
+        for _ in range(5):
             entry = tk.Entry(self.ferma_frame)
             entry.pack(pady=5)
             self.ferma_inputs.append(entry)
@@ -117,7 +118,6 @@ class PrimeCheckWindow:
         self.ferma_button = tk.Button(self.ferma_frame, text="Проверить тестом Ферма", command=self.check_ferma)
         self.ferma_button.pack()
 
-        # Текстовое поле для вывода результатов
         self.result_text = tk.Text(self.window, height=10, width=60)
         self.result_text.pack(pady=10)
         self.result_text.config(state=tk.DISABLED)
@@ -147,17 +147,19 @@ class PrimeCheckWindow:
             messagebox.showerror("Ошибка", "Введите корректные основания для теста Ферма!")
 
 
-class ECDSAUserWindow:
+class WindowECDSA:
     def __init__(self, root, user_name):
         self.window = tk.Toplevel(root)
         self.window.title(user_name)
-        self.window.geometry("500x500")
+        self.window.geometry("700x700")
 
         self.curve = create_curve()
         self.private_key, self.public_key = generate_keys(self.curve)
         self.received_message = None
 
-        # Генерация ключей
+        # Ссылки на другие окна (используются для пересылки)
+        self.partner_window = None
+
         self.label = tk.Label(self.window, text=f"{user_name}: ECDSA", font=("Arial", 16))
         self.label.pack(pady=10)
 
@@ -170,7 +172,6 @@ class ECDSAUserWindow:
         )
         self.generate_keys_button.pack(pady=5)
 
-        # Ввод сообщения
         self.message_label = tk.Label(self.window, text="Сообщение:")
         self.message_label.pack(pady=5)
 
@@ -178,7 +179,7 @@ class ECDSAUserWindow:
         self.message_input.pack(pady=5)
 
         self.sign_message_button = tk.Button(
-            self.window, text="Подписать сообщение", command=self.sign_message
+            self.window, text="Подписать и зашифровать сообщение", command=self.sign_and_encrypt_message
         )
         self.sign_message_button.pack(pady=5)
 
@@ -186,7 +187,11 @@ class ECDSAUserWindow:
         self.signature_output.pack(pady=10)
         self.signature_output.config(state=tk.DISABLED)
 
-        # Получение сообщения
+        self.send_button = tk.Button(
+            self.window, text="Отправить сообщение", command=self.send_message
+        )
+        self.send_button.pack(pady=5)
+
         self.receive_label = tk.Label(self.window, text="Принятое сообщение:")
         self.receive_label.pack(pady=5)
 
@@ -195,7 +200,7 @@ class ECDSAUserWindow:
         self.receive_output.config(state=tk.DISABLED)
 
         self.verify_button = tk.Button(
-            self.window, text="Проверить подпись", command=self.verify_signature
+            self.window, text="Проверить подпись и расшифровать", command=self.verify_and_decrypt_message
         )
         self.verify_button.pack(pady=5)
 
@@ -208,30 +213,84 @@ class ECDSAUserWindow:
         )
         self.keys_output.config(state=tk.DISABLED)
 
-    def sign_message(self):
-        """Подписать сообщение."""
+    def sign_and_encrypt_message(self):
+        """Подписать и зашифровать сообщение."""
         message = self.message_input.get("1.0", tk.END).strip()
         if not message:
             messagebox.showerror("Ошибка", "Введите сообщение для подписи!")
             return
 
+        # Подпись сообщения
         r, s = sign_message(self.private_key, message, self.curve)
+        signature = (r, s)
+
+        # Шифрование сообщения
+        encrypted_message = encrypt_message_with_curve(message, self.private_key, self.public_key, self.curve)
+
+        # Отображение зашифрованного сообщения и подписи
         self.signature_output.config(state=tk.NORMAL)
         self.signature_output.delete(1.0, tk.END)
         self.signature_output.insert(
-            tk.END, f"Подпись: r={r}, s={s}"
+            tk.END, f"Зашифрованное сообщение: {encrypted_message}\nПодпись: r={r}, s={s}"
         )
         self.signature_output.config(state=tk.DISABLED)
 
-    def verify_signature(self):
-        """Проверить подпись принятого сообщения."""
+        # Сохранение для передачи
+        self.received_message = (encrypted_message, signature)
+
+    def send_message(self):
+        """Отправить сообщение другому пользователю."""
+        if self.partner_window is None:
+            messagebox.showerror("Ошибка", "Получатель не подключён!")
+            return
+
+        if not self.received_message:
+            messagebox.showerror("Ошибка", "Сначала подпишите и зашифруйте сообщение!")
+            return
+
+        # Передаём сообщение, подпись и публичный ключ Alice
+        self.partner_window.receive_message(self.received_message, self.public_key)
+
+    def receive_message(self, received_message, sender_public_key):
+        """Принять сообщение от другого пользователя."""
+        self.received_message = received_message
+        self.sender_public_key = sender_public_key  # Сохраняем публичный ключ отправителя
+        encrypted_message, signature = received_message
+
+        # Отобразить принятое сообщение
+        self.receive_output.config(state=tk.NORMAL)
+        self.receive_output.delete(1.0, tk.END)
+        self.receive_output.insert(
+            tk.END, f"Зашифрованное сообщение: {encrypted_message}\nПодпись: {signature}"
+        )
+        self.receive_output.config(state=tk.DISABLED)
+
+    def verify_and_decrypt_message(self):
+        """Проверить подпись и расшифровать сообщение."""
         if not self.received_message:
             messagebox.showerror("Ошибка", "Сообщение не получено!")
             return
 
-        message, signature = self.received_message
-        is_valid = verify_signature(self.public_key, message, signature, self.curve)
-        messagebox.showinfo(
-            "Проверка подписи",
+        if not hasattr(self, 'sender_public_key'):
+            messagebox.showerror("Ошибка", "Публичный ключ отправителя отсутствует!")
+            return
+
+        encrypted_message, signature = self.received_message
+
+        # Расшифровка сообщения с использованием приватного ключа Bob
+        decrypted_message = decrypt_message_with_curve(
+            encrypted_message, self.private_key, self.sender_public_key, self.curve
+        )
+
+        # Проверка подписи с использованием публичного ключа Alice
+        is_valid = verify_signature(self.sender_public_key, decrypted_message, signature, self.curve)
+
+        # Отображение результата
+        self.receive_output.config(state=tk.NORMAL)
+        self.receive_output.delete(1.0, tk.END)
+        self.receive_output.insert(
+            tk.END,
+            f"Расшифрованное сообщение: {decrypted_message}\n"
             f"Подпись {'действительна' if is_valid else 'недействительна'}!",
         )
+        self.receive_output.config(state=tk.DISABLED)
