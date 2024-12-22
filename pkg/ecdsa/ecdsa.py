@@ -1,4 +1,4 @@
-from pkg.generate import generate_prime
+from pkg.prime.generate import generate_prime
 
 # Параметры эллиптической кривой
 class EllipticCurve:

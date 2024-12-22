@@ -1,10 +1,10 @@
 import tkinter as tk
 from tkinter import messagebox
-from pkg.generate import generate_prime
-from pkg.checking import trial_division_method, test_ferma
-from pkg.ecdsa import create_curve, generate_keys, sign_message, verify_signature
-from pkg.encryption import encrypt_message_with_curve
-from pkg.decryption import decrypt_message_with_curve
+from pkg.prime.generate import generate_prime
+from pkg.prime.checking import trial_division_method, test_ferma
+from pkg.ecdsa.ecdsa import create_curve, generate_keys, sign_message, verify_signature
+from pkg.ecdsa.encryption import encrypt_message_with_curve
+from pkg.ecdsa.decryption import decrypt_message_with_curve
 
 
 class App:
@@ -32,7 +32,6 @@ class App:
         alice_window = WindowECDSA(self.root, "Alice")
         bob_window = WindowECDSA(self.root, "Bob")
 
-        # Устанавливаем связь между окнами
         alice_window.partner_window = bob_window
         bob_window.partner_window = alice_window
 
@@ -157,10 +156,9 @@ class WindowECDSA:
         self.private_key, self.public_key = generate_keys(self.curve)
         self.received_message = None
 
-        # Ссылки на другие окна (используются для пересылки)
         self.partner_window = None
 
-        self.label = tk.Label(self.window, text=f"{user_name}: ECDSA", font=("Arial", 16))
+        self.label = tk.Label(self.window, text=f"{user_name}", font=("Arial", 16))
         self.label.pack(pady=10)
 
         self.keys_output = tk.Text(self.window, height=5, width=60)
@@ -220,14 +218,17 @@ class WindowECDSA:
             messagebox.showerror("Ошибка", "Введите сообщение для подписи!")
             return
 
-        # Подпись сообщения
         r, s = sign_message(self.private_key, message, self.curve)
         signature = (r, s)
 
-        # Шифрование сообщения
-        encrypted_message = encrypt_message_with_curve(message, self.private_key, self.public_key, self.curve)
+        if not self.partner_window:
+            messagebox.showerror("Ошибка", "Получатель не подключён!")
+            return
 
-        # Отображение зашифрованного сообщения и подписи
+        encrypted_message = encrypt_message_with_curve(
+            message, self.private_key, self.partner_window.public_key, self.curve
+        )
+
         self.signature_output.config(state=tk.NORMAL)
         self.signature_output.delete(1.0, tk.END)
         self.signature_output.insert(
@@ -235,7 +236,6 @@ class WindowECDSA:
         )
         self.signature_output.config(state=tk.DISABLED)
 
-        # Сохранение для передачи
         self.received_message = (encrypted_message, signature)
 
     def send_message(self):
@@ -248,16 +248,14 @@ class WindowECDSA:
             messagebox.showerror("Ошибка", "Сначала подпишите и зашифруйте сообщение!")
             return
 
-        # Передаём сообщение, подпись и публичный ключ Alice
         self.partner_window.receive_message(self.received_message, self.public_key)
 
     def receive_message(self, received_message, sender_public_key):
         """Принять сообщение от другого пользователя."""
         self.received_message = received_message
-        self.sender_public_key = sender_public_key  # Сохраняем публичный ключ отправителя
+        self.sender_public_key = sender_public_key
         encrypted_message, signature = received_message
 
-        # Отобразить принятое сообщение
         self.receive_output.config(state=tk.NORMAL)
         self.receive_output.delete(1.0, tk.END)
         self.receive_output.insert(
@@ -277,15 +275,12 @@ class WindowECDSA:
 
         encrypted_message, signature = self.received_message
 
-        # Расшифровка сообщения с использованием приватного ключа Bob
         decrypted_message = decrypt_message_with_curve(
             encrypted_message, self.private_key, self.sender_public_key, self.curve
         )
 
-        # Проверка подписи с использованием публичного ключа Alice
         is_valid = verify_signature(self.sender_public_key, decrypted_message, signature, self.curve)
 
-        # Отображение результата
         self.receive_output.config(state=tk.NORMAL)
         self.receive_output.delete(1.0, tk.END)
         self.receive_output.insert(

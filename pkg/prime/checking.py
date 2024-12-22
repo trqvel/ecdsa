@@ -27,7 +27,6 @@ def test_ferma(number, bases):
     return f"Число {number} прошло тест Ферма для всех оснований!"
 
 
-# Функция для создания окна с проверками
 def run_check_window(number):
     def check_trial():
         try:
@@ -47,7 +46,6 @@ def run_check_window(number):
         except ValueError:
             messagebox.showerror("Ошибка", "Ошибка ввода оснований. Введите положительные числа.")
 
-    # Создание главного окна
     window = tk.Tk()
     window.title("Проверка простоты числа")
 
