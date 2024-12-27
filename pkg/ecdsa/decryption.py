@@ -4,7 +4,7 @@ def decrypt_message_with_curve(encrypted_message, receiver_private_key, sender_p
     shared_secret = (receiver_private_key * sender_public_key[0]) % curve.p
 
     # Преобразование общего секрета в ключ
-    decryption_key = shared_secret % 256  # Упростим ключ до 1 байта
+    decryption_key = shared_secret % 256
 
     # Расшифровка сообщения
     decrypted_message = "".join(chr(ord(char) ^ decryption_key) for char in encrypted_message)
