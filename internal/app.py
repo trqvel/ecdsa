@@ -65,8 +65,7 @@ class PrimeWindow:
 
     def generate_prime(self):
         """Генерация случайного простого числа."""
-        start, end, workers = 100000, 999999, 5
-        self.last_generated_prime = generate_prime(start, end, workers)
+        self.last_generated_prime = generate_prime()
 
         self.output_text.config(state=tk.NORMAL)
         self.output_text.delete(1.0, tk.END)
