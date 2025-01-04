@@ -91,7 +91,9 @@ class PrimeCheckWindow:
 
         self.number = number
 
-        self.label = tk.Label(self.window, text=f"Проверяемое число: {self.number}", font=("Arial", 16))
+        self.label = tk.Label(
+            self.window, text=f"Проверяемое число: {self.number}", font=("Arial", 16)
+        )
         self.label.pack(pady=10)
 
         self.trial_frame = tk.LabelFrame(self.window, text="Метод пробных делений", padx=10, pady=10)
@@ -101,7 +103,11 @@ class PrimeCheckWindow:
         self.trial_input.pack(pady=5)
         self.trial_input.insert(0, "1")
 
-        self.trial_button = tk.Button(self.trial_frame, text="Проверить методом пробных делений", command=self.check_trial_division)
+        self.trial_button = tk.Button(
+            self.trial_frame,
+            text="Проверить методом пробных делений",
+            command=self.check_trial_division
+        )
         self.trial_button.pack()
 
         self.ferma_frame = tk.LabelFrame(self.window, text="Тест Ферма", padx=10, pady=10)
@@ -113,7 +119,11 @@ class PrimeCheckWindow:
             entry.pack(pady=5)
             self.ferma_inputs.append(entry)
 
-        self.ferma_button = tk.Button(self.ferma_frame, text="Проверить тестом Ферма", command=self.check_ferma)
+        self.ferma_button = tk.Button(
+            self.ferma_frame,
+            text="Проверить тестом Ферма",
+            command=self.check_ferma
+        )
         self.ferma_button.pack()
 
         self.result_text = tk.Text(self.window, height=10, width=60)
@@ -128,21 +138,22 @@ class PrimeCheckWindow:
             self.result_text.config(state=tk.NORMAL)
             self.result_text.insert(tk.END, f"Метод пробных делений:\n{result}\n\n")
             self.result_text.config(state=tk.DISABLED)
-        except ValueError:
-            messagebox.showerror("Ошибка", "Введите корректное число для метода пробных делений!")
+        except ValueError as e:
+            messagebox.showerror("Ошибка", f"Ошибка ввода: {str(e)}")
 
     def check_ferma(self):
         """Проверка тестом Ферма."""
         try:
             bases = [int(entry.get()) for entry in self.ferma_inputs if entry.get()]
             if not bases:
-                raise ValueError
+                raise ValueError("Введите хотя бы одну основу для теста Ферма!")
+
             result = test_ferma(self.number, bases)
             self.result_text.config(state=tk.NORMAL)
             self.result_text.insert(tk.END, f"Тест Ферма:\n{result}\n\n")
             self.result_text.config(state=tk.DISABLED)
-        except ValueError:
-            messagebox.showerror("Ошибка", "Введите корректные основания для теста Ферма!")
+        except ValueError as e:
+            messagebox.showerror("Ошибка", f"Ошибка ввода: {str(e)}")
 
 
 class WindowECDSA:
@@ -285,6 +296,6 @@ class WindowECDSA:
         self.receive_output.insert(
             tk.END,
             f"Расшифрованное сообщение: {decrypted_message}\n"
-            f"Подпись {'действительна' if is_valid else 'недействительна'}!",
+            f"Подпись {'действительна' if is_valid else 'недействительна'}!"
         )
         self.receive_output.config(state=tk.DISABLED)
