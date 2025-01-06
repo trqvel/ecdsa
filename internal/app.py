@@ -3,8 +3,6 @@ from tkinter import messagebox
 from pkg.prime.generate import generate_prime
 from pkg.prime.checking import trial_division_method, test_miller_rabin
 from pkg.ecdsa.ecdsa import create_curve, generate_keys, sign_message, verify_signature
-from pkg.ecdsa.encryption import encrypt_message_with_curve
-from pkg.ecdsa.decryption import decrypt_message_with_curve
 
 
 class App:
@@ -153,7 +151,6 @@ class WindowECDSA:
         self.curve = create_curve()
         self.private_key, self.public_key = generate_keys(self.curve)
         self.received_message = None
-
         self.partner_window = None
 
         self.label = tk.Label(self.window, text=f"{user_name}", font=("Arial", 16))
@@ -175,7 +172,7 @@ class WindowECDSA:
         self.message_input.pack(pady=5)
 
         self.sign_message_button = tk.Button(
-            self.window, text="Подписать и зашифровать сообщение", command=self.sign_and_encrypt_message
+            self.window, text="Подписать сообщение", command=self.sign_message
         )
         self.sign_message_button.pack(pady=5)
 
@@ -196,12 +193,11 @@ class WindowECDSA:
         self.receive_output.config(state=tk.DISABLED)
 
         self.verify_button = tk.Button(
-            self.window, text="Проверить подпись и расшифровать", command=self.verify_and_decrypt_message
+            self.window, text="Проверить подпись", command=self.verify_message
         )
         self.verify_button.pack(pady=5)
 
     def display_keys(self):
-        """Отображение ключей."""
         self.keys_output.config(state=tk.NORMAL)
         self.keys_output.delete(1.0, tk.END)
         self.keys_output.insert(
@@ -209,8 +205,7 @@ class WindowECDSA:
         )
         self.keys_output.config(state=tk.DISABLED)
 
-    def sign_and_encrypt_message(self):
-        """Подписать и зашифровать сообщение."""
+    def sign_message(self):
         message = self.message_input.get("1.0", tk.END).strip()
         if not message:
             messagebox.showerror("Ошибка", "Введите сообщение для подписи!")
@@ -219,50 +214,38 @@ class WindowECDSA:
         r, s = sign_message(self.private_key, message, self.curve)
         signature = (r, s)
 
+        self.signature_output.config(state=tk.NORMAL)
+        self.signature_output.delete(1.0, tk.END)
+        self.signature_output.insert(
+            tk.END, f"Подпись: r={r}, s={s}"
+        )
+        self.signature_output.config(state=tk.DISABLED)
+        self.received_message = (message, signature)
+
+    def send_message(self):
         if not self.partner_window:
             messagebox.showerror("Ошибка", "Получатель не подключён!")
             return
 
-        encrypted_message = encrypt_message_with_curve(
-            message, self.private_key, self.partner_window.public_key, self.curve
-        )
-
-        self.signature_output.config(state=tk.NORMAL)
-        self.signature_output.delete(1.0, tk.END)
-        self.signature_output.insert(
-            tk.END, f"Зашифрованное сообщение: {encrypted_message}\nПодпись: r={r}, s={s}"
-        )
-        self.signature_output.config(state=tk.DISABLED)
-
-        self.received_message = (encrypted_message, signature)
-
-    def send_message(self):
-        """Отправить сообщение другому пользователю."""
-        if self.partner_window is None:
-            messagebox.showerror("Ошибка", "Получатель не подключён!")
-            return
-
         if not self.received_message:
-            messagebox.showerror("Ошибка", "Сначала подпишите и зашифруйте сообщение!")
+            messagebox.showerror("Ошибка", "Сначала подпишите сообщение!")
             return
 
         self.partner_window.receive_message(self.received_message, self.public_key)
 
     def receive_message(self, received_message, sender_public_key):
-        """Принять сообщение от другого пользователя."""
         self.received_message = received_message
         self.sender_public_key = sender_public_key
-        encrypted_message, signature = received_message
+        message, signature = received_message
 
         self.receive_output.config(state=tk.NORMAL)
         self.receive_output.delete(1.0, tk.END)
         self.receive_output.insert(
-            tk.END, f"Зашифрованное сообщение: {encrypted_message}\nПодпись: {signature}"
+            tk.END, f"Полученное сообщение: {message}\nПодпись: {signature}"
         )
         self.receive_output.config(state=tk.DISABLED)
 
-    def verify_and_decrypt_message(self):
-        """Проверить подпись и расшифровать сообщение."""
+    def verify_message(self):
         if not self.received_message:
             messagebox.showerror("Ошибка", "Сообщение не получено!")
             return
@@ -271,19 +254,16 @@ class WindowECDSA:
             messagebox.showerror("Ошибка", "Публичный ключ отправителя отсутствует!")
             return
 
-        encrypted_message, signature = self.received_message
+        message, signature = self.received_message
+        r, s = signature
 
-        decrypted_message = decrypt_message_with_curve(
-            encrypted_message, self.private_key, self.sender_public_key, self.curve
-        )
-
-        is_valid = verify_signature(self.sender_public_key, decrypted_message, signature, self.curve)
+        is_valid = verify_signature(self.sender_public_key, message, (r, s), self.curve)
 
         self.receive_output.config(state=tk.NORMAL)
         self.receive_output.delete(1.0, tk.END)
         self.receive_output.insert(
             tk.END,
-            f"Расшифрованное сообщение: {decrypted_message}\n"
+            f"Полученное сообщение: {message}\n"
             f"Подпись {'действительна' if is_valid else 'недействительна'}!"
         )
         self.receive_output.config(state=tk.DISABLED)
