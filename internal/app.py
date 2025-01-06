@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import messagebox
 from pkg.prime.generate import generate_prime
-from pkg.prime.checking import trial_division_method, test_ferma
+from pkg.prime.checking import trial_division_method, test_miller_rabin
 from pkg.ecdsa.ecdsa import create_curve, generate_keys, sign_message, verify_signature
 from pkg.ecdsa.encryption import encrypt_message_with_curve
 from pkg.ecdsa.decryption import decrypt_message_with_curve
@@ -11,7 +11,7 @@ class App:
     def __init__(self, root):
         self.root = root
         self.root.title("Главное меню")
-        self.root.geometry("400x150")
+        self.root.geometry("400x125")
 
         self.prime_button = tk.Button(
             self.root, text="Тестирование простых чисел", command=self.open_prime_menu
@@ -24,11 +24,9 @@ class App:
         self.ecdsa_button.pack(pady=10)
 
     def open_prime_menu(self):
-        """Открытие окна работы с простыми числами."""
         PrimeWindow(self.root)
 
     def open_ecdsa_windows(self):
-        """Открытие окон взаимодействия двух пользователей."""
         alice_window = WindowECDSA(self.root, "Alice")
         bob_window = WindowECDSA(self.root, "Bob")
 
@@ -64,7 +62,6 @@ class PrimeWindow:
         self.output_text.config(state=tk.DISABLED)
 
     def generate_prime(self):
-        """Генерация случайного простого числа."""
         self.last_generated_prime = generate_prime()
 
         self.output_text.config(state=tk.NORMAL)
@@ -75,11 +72,9 @@ class PrimeWindow:
         self.output_text.config(state=tk.DISABLED)
 
     def open_check_window(self):
-        """Открывает новое окно для проверки простоты числа."""
         if not self.last_generated_prime:
             messagebox.showerror("Ошибка", "Сначала сгенерируйте число!")
             return
-
         PrimeCheckWindow(self.window, self.last_generated_prime)
 
 
@@ -110,28 +105,25 @@ class PrimeCheckWindow:
         )
         self.trial_button.pack()
 
-        self.ferma_frame = tk.LabelFrame(self.window, text="Тест Ферма", padx=10, pady=10)
-        self.ferma_frame.pack(pady=10, fill="x", padx=20)
+        self.mr_frame = tk.LabelFrame(self.window, text="Тест Миллера-Рабина", padx=10, pady=10)
+        self.mr_frame.pack(pady=10, fill="x", padx=20)
 
-        self.ferma_inputs = []
-        for _ in range(5):
-            entry = tk.Entry(self.ferma_frame)
-            entry.pack(pady=5)
-            self.ferma_inputs.append(entry)
+        self.mr_input = tk.Entry(self.mr_frame)
+        self.mr_input.pack(pady=5)
+        self.mr_input.insert(0, "1")
 
-        self.ferma_button = tk.Button(
-            self.ferma_frame,
-            text="Проверить тестом Ферма",
-            command=self.check_ferma
+        self.mr_button = tk.Button(
+            self.mr_frame,
+            text="Проверить тестом Миллера-Рабина",
+            command=self.check_mr
         )
-        self.ferma_button.pack()
+        self.mr_button.pack()
 
         self.result_text = tk.Text(self.window, height=10, width=60)
         self.result_text.pack(pady=10)
         self.result_text.config(state=tk.DISABLED)
 
     def check_trial_division(self):
-        """Проверка методом пробных делений."""
         try:
             max_primes = int(self.trial_input.get())
             result = trial_division_method(self.number, max_primes)
@@ -139,21 +131,17 @@ class PrimeCheckWindow:
             self.result_text.insert(tk.END, f"Метод пробных делений:\n{result}\n\n")
             self.result_text.config(state=tk.DISABLED)
         except ValueError as e:
-            messagebox.showerror("Ошибка", f"Ошибка ввода: {str(e)}")
+            messagebox.showerror("Ошибка", f"Ошибка: {str(e)}")
 
-    def check_ferma(self):
-        """Проверка тестом Ферма."""
+    def check_mr(self):
         try:
-            bases = [int(entry.get()) for entry in self.ferma_inputs if entry.get()]
-            if not bases:
-                raise ValueError("Введите хотя бы одну основу для теста Ферма!")
-
-            result = test_ferma(self.number, bases)
+            k = int(self.mr_input.get())
+            result = test_miller_rabin(self.number, k)
             self.result_text.config(state=tk.NORMAL)
-            self.result_text.insert(tk.END, f"Тест Ферма:\n{result}\n\n")
+            self.result_text.insert(tk.END, f"Тест Миллера-Рабина:\n{result}\n\n")
             self.result_text.config(state=tk.DISABLED)
         except ValueError as e:
-            messagebox.showerror("Ошибка", f"Ошибка ввода: {str(e)}")
+            messagebox.showerror("Ошибка", f"Ошибка: {str(e)}")
 
 
 class WindowECDSA:
