@@ -5,9 +5,9 @@ def trial_division_method(number, max_primes):
         raise ValueError("Введите натуральное число!")
     if max_primes > 25:
         raise ValueError("Не могу осуществить проверку с более чем 25 простыми числами!")
-    
+
     primes = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97]
-    
+
     if max_primes < len(primes):
         primes = primes[:max_primes]
     for p in primes:
@@ -20,7 +20,7 @@ def test_miller_rabin(number, k):
     if number <= 1:
         return f"Число {number} не является простым."
     if k <= 0:
-        raise ValueError("Число оснований теста Миллера-Рабина должно быть натуральным!")
+        raise ValueError("Число оснований для теста Миллера-Рабина должно быть натуральным!")
     if k > 20:
         raise ValueError("Не могу осуществить проверку с более чем 20 основаниями в тесте Миллера-Рабина!")
 
