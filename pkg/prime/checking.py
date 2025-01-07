@@ -15,7 +15,6 @@ def trial_division_method(number, max_primes):
             return f"Число {number} делится на {p}. Не является простым!"
     return f"Число {number} успешно прошло тест пробных делений!"
 
-
 def test_miller_rabin(number, k):
     if number <= 1:
         return f"Число {number} не является простым."

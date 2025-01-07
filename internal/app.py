@@ -2,7 +2,9 @@ import tkinter as tk
 from tkinter import messagebox
 from pkg.prime.generate import generate_prime
 from pkg.prime.checking import trial_division_method, test_miller_rabin
-from pkg.ecdsa.ecdsa import create_curve, generate_keys, sign_message, verify_signature
+from pkg.ecdsa.curve import curveNIST256p, generate_keys
+from pkg.ecdsa.sign import sign_message
+from pkg.ecdsa.verify import verify_sign
 
 
 class App:
@@ -17,7 +19,9 @@ class App:
         self.prime_button.pack(pady=10)
 
         self.ecdsa_button = tk.Button(
-            self.root, text="Подпись и проверка сообщений по протоколу ECDSA", command=self.open_ecdsa_windows
+            self.root,
+            text="Подпись и проверка сообщений по протоколу ECDSA",
+            command=self.open_ecdsa_windows,
         )
         self.ecdsa_button.pack(pady=10)
 
@@ -89,7 +93,9 @@ class PrimeCheckWindow:
         )
         self.label.pack(pady=10)
 
-        self.trial_frame = tk.LabelFrame(self.window, text="Метод пробных делений", padx=10, pady=10)
+        self.trial_frame = tk.LabelFrame(
+            self.window, text="Метод пробных делений", padx=10, pady=10
+        )
         self.trial_frame.pack(pady=10, fill="x", padx=20)
 
         self.trial_input = tk.Entry(self.trial_frame)
@@ -99,11 +105,13 @@ class PrimeCheckWindow:
         self.trial_button = tk.Button(
             self.trial_frame,
             text="Проверить методом пробных делений",
-            command=self.check_trial_division
+            command=self.check_trial_division,
         )
         self.trial_button.pack()
 
-        self.mr_frame = tk.LabelFrame(self.window, text="Тест Миллера-Рабина", padx=10, pady=10)
+        self.mr_frame = tk.LabelFrame(
+            self.window, text="Тест Миллера-Рабина", padx=10, pady=10
+        )
         self.mr_frame.pack(pady=10, fill="x", padx=20)
 
         self.mr_input = tk.Entry(self.mr_frame)
@@ -113,7 +121,7 @@ class PrimeCheckWindow:
         self.mr_button = tk.Button(
             self.mr_frame,
             text="Проверить тестом Миллера-Рабина",
-            command=self.check_mr
+            command=self.check_mr,
         )
         self.mr_button.pack()
 
@@ -148,7 +156,7 @@ class WindowECDSA:
         self.window.title(user_name)
         self.window.geometry("700x700")
 
-        self.curve = create_curve()
+        self.curve = curveNIST256p()
         self.private_key, self.public_key = generate_keys(self.curve)
         self.received_message = None
         self.partner_window = None
@@ -201,7 +209,8 @@ class WindowECDSA:
         self.keys_output.config(state=tk.NORMAL)
         self.keys_output.delete(1.0, tk.END)
         self.keys_output.insert(
-            tk.END, f"Приватный ключ: {self.private_key}\nПубличный ключ: {self.public_key}"
+            tk.END,
+            f"Приватный ключ: {self.private_key}\nПубличный ключ: {self.public_key}",
         )
         self.keys_output.config(state=tk.DISABLED)
 
@@ -211,7 +220,7 @@ class WindowECDSA:
             messagebox.showerror("Ошибка", "Введите сообщение для подписи!")
             return
 
-        r, s = sign_message(self.private_key, message, self.curve)
+        r, s = sign_message(message, self.private_key, self.curve)
         signature = (r, s)
 
         self.signature_output.config(state=tk.NORMAL)
@@ -250,20 +259,17 @@ class WindowECDSA:
             messagebox.showerror("Ошибка", "Сообщение не получено!")
             return
 
-        if not hasattr(self, 'sender_public_key'):
+        if not hasattr(self, "sender_public_key"):
             messagebox.showerror("Ошибка", "Публичный ключ отправителя отсутствует!")
             return
 
         message, signature = self.received_message
         r, s = signature
 
-        is_valid = verify_signature(self.sender_public_key, message, (r, s), self.curve)
+        is_valid = verify_sign(message, (r, s), self.sender_public_key, self.curve)
 
         self.receive_output.config(state=tk.NORMAL)
-        self.receive_output.delete(1.0, tk.END)
         self.receive_output.insert(
-            tk.END,
-            f"Полученное сообщение: {message}\n"
-            f"Подпись {'действительна' if is_valid else 'недействительна'}!"
+            tk.END, f"\nПодпись {'действительна' if is_valid else 'недействительна'}!"
         )
         self.receive_output.config(state=tk.DISABLED)

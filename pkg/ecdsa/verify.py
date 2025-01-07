@@ -1,5 +1,6 @@
-from message import hash_message
-from curve import multScalar, addPoint, inverseModule
+from pkg.ecdsa.message import hash_message
+from pkg.ecdsa.curve import multScalar, addPoint, inverseModule
+
 
 def verify_sign(message, sign, public_key, curve):
     r, s = sign

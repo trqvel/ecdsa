@@ -1,5 +1,6 @@
-from message import hash_message
-from curve import multScalar, inverseModule, genRandom
+from pkg.ecdsa.message import hash_message
+from pkg.ecdsa.curve import multScalar, inverseModule, genRandom
+
 
 def sign_message(message, private_key, curve):
     e = int(hash_message(message), 16)
