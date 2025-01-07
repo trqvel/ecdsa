@@ -154,12 +154,13 @@ class WindowECDSA:
     def __init__(self, root, user_name):
         self.window = tk.Toplevel(root)
         self.window.title(user_name)
-        self.window.geometry("700x700")
+        self.window.geometry("700x800")
 
         self.curve = curveNIST256p()
         self.private_key, self.public_key = generate_keys(self.curve)
         self.received_message = None
         self.partner_window = None
+        self.partner_public_key = None
 
         self.label = tk.Label(self.window, text=f"{user_name}", font=("Arial", 16))
         self.label.pack(pady=10)
@@ -172,6 +173,15 @@ class WindowECDSA:
             self.window, text="Сгенерировать ключи", command=self.display_keys
         )
         self.generate_keys_button.pack(pady=5)
+
+        self.send_public_key_button = tk.Button(
+            self.window, text="Отправить публичный ключ", command=self.send_public_key
+        )
+        self.send_public_key_button.pack(pady=5)
+
+        self.partner_key_output = tk.Text(self.window, height=3, width=60)
+        self.partner_key_output.pack(pady=10)
+        self.partner_key_output.config(state=tk.DISABLED)
 
         self.message_label = tk.Label(self.window, text="Сообщение:")
         self.message_label.pack(pady=5)
@@ -213,6 +223,23 @@ class WindowECDSA:
             f"Приватный ключ: {self.private_key}\nПубличный ключ: {self.public_key}",
         )
         self.keys_output.config(state=tk.DISABLED)
+
+    def send_public_key(self):
+        if not self.partner_window:
+            messagebox.showerror("Ошибка", "Получатель не подключён!")
+            return
+
+        self.partner_window.receive_public_key(self.public_key)
+
+    def receive_public_key(self, public_key):
+        self.partner_public_key = public_key
+
+        self.partner_key_output.config(state=tk.NORMAL)
+        self.partner_key_output.delete(1.0, tk.END)
+        self.partner_key_output.insert(
+            tk.END, f"Публичный ключ партнёра: {self.partner_public_key}"
+        )
+        self.partner_key_output.config(state=tk.DISABLED)
 
     def sign_message(self):
         message = self.message_input.get("1.0", tk.END).strip()
@@ -259,14 +286,14 @@ class WindowECDSA:
             messagebox.showerror("Ошибка", "Сообщение не получено!")
             return
 
-        if not hasattr(self, "sender_public_key"):
+        if not self.partner_public_key:
             messagebox.showerror("Ошибка", "Публичный ключ отправителя отсутствует!")
             return
 
         message, signature = self.received_message
         r, s = signature
 
-        is_valid = verify_sign(message, (r, s), self.sender_public_key, self.curve)
+        is_valid = verify_sign(message, (r, s), self.partner_public_key, self.curve)
 
         self.receive_output.config(state=tk.NORMAL)
         self.receive_output.insert(
