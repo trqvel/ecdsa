@@ -1,4 +1,4 @@
-def sha256(message):
+def sha256(message_bytes):
     h = [
         0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
         0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19
@@ -21,11 +21,11 @@ def sha256(message):
     def sha256_schedule(message):
         w = [0] * 64
         for i in range(len(message) // 4):
-            w[i] = int.from_bytes(message[i*4:(i+1)*4], 'big')
+            w[i] = int.from_bytes(message[i * 4:(i + 1) * 4], 'big')
         for i in range(16, 64):
-            s0 = rotr(w[i-15], 7) ^ rotr(w[i-15], 18) ^ (w[i-15] >> 3)
-            s1 = rotr(w[i-2], 17) ^ rotr(w[i-2], 19) ^ (w[i-2] >> 10)
-            w[i] = (w[i-16] + s0 + w[i-7] + s1) & 0xffffffff
+            s0 = rotr(w[i - 15], 7) ^ rotr(w[i - 15], 18) ^ (w[i - 15] >> 3)
+            s1 = rotr(w[i - 2], 17) ^ rotr(w[i - 2], 19) ^ (w[i - 2] >> 10)
+            w[i] = (w[i - 16] + s0 + w[i - 7] + s1) & 0xffffffff
         return w
 
     def sha256_compression(h, w):
@@ -47,14 +47,13 @@ def sha256(message):
             a = (temp1 + temp2) & 0xffffffff
         return [(x + y) & 0xffffffff for x, y in zip(h, [a, b, c, d, e, f, g, h_var])]
 
-    message_bytes = message.encode('ascii')
     original_length = len(message_bytes) * 8
     message_bytes += b'\x80'
     while len(message_bytes) % 64 != 56:
         message_bytes += b'\x00'
     message_bytes += original_length.to_bytes(8, 'big')
     for i in range(0, len(message_bytes), 64):
-        block = message_bytes[i:i+64]
+        block = message_bytes[i:i + 64]
         w = sha256_schedule(block)
         h = sha256_compression(h, w)
     return ''.join(f'{x:08x}' for x in h)
@@ -64,10 +63,9 @@ def checkMessage(message):
         raise ValueError("Сообщение не должно быть пустым!")
     if len(message) > 256:
         raise ValueError("Сообщение не должно быть длиннее 256 символов!")
-    if not all(0 <= ord(ch) <= 127 for ch in message):
-        raise ValueError("Сообщение должно содержать только символы ASCII!")
     return True
 
 def hash_message(message):
     checkMessage(message)
-    return sha256(message)
+    message_bytes = message.encode('utf-8')
+    return sha256(message_bytes)

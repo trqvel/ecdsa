@@ -157,7 +157,7 @@ class WindowECDSA:
         self.window.geometry("700x800")
 
         self.curve = curveNIST256p()
-        self.private_key, self.public_key = generate_keys(self.curve)
+        self.private_key, self.public_key = None, None
         self.received_message = None
         self.partner_window = None
         self.partner_public_key = None
@@ -170,7 +170,7 @@ class WindowECDSA:
         self.keys_output.config(state=tk.DISABLED)
 
         self.generate_keys_button = tk.Button(
-            self.window, text="Сгенерировать ключи", command=self.display_keys
+            self.window, text="Сгенерировать ключи", command=self.generate_keys
         )
         self.generate_keys_button.pack(pady=5)
 
@@ -215,7 +215,8 @@ class WindowECDSA:
         )
         self.verify_button.pack(pady=5)
 
-    def display_keys(self):
+    def generate_keys(self):
+        self.private_key, self.public_key = generate_keys(self.curve)
         self.keys_output.config(state=tk.NORMAL)
         self.keys_output.delete(1.0, tk.END)
         self.keys_output.insert(
@@ -246,8 +247,12 @@ class WindowECDSA:
         if not message:
             messagebox.showerror("Ошибка", "Введите сообщение для подписи!")
             return
+        try:
+            r, s = sign_message(message, self.private_key, self.curve)
+        except ValueError as e:
+            messagebox.showerror("Ошибка", str(e))
+            return
 
-        r, s = sign_message(message, self.private_key, self.curve)
         signature = (r, s)
 
         self.signature_output.config(state=tk.NORMAL)
@@ -265,6 +270,11 @@ class WindowECDSA:
 
         if not self.received_message:
             messagebox.showerror("Ошибка", "Сначала подпишите сообщение!")
+            return
+
+        current_message = self.message_input.get("1.0", tk.END).strip()
+        if not self.received_message or self.received_message[0] != current_message:
+            messagebox.showerror("Ошибка", "Сообщение было изменено без смены подписи!")
             return
 
         self.partner_window.receive_message(self.received_message, self.public_key)
