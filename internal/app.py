@@ -1,3 +1,4 @@
+import time
 import tkinter as tk
 from tkinter import messagebox
 from pkg.prime.generate import generate_prime
@@ -161,6 +162,7 @@ class WindowECDSA:
         self.received_message = None
         self.partner_window = None
         self.partner_public_key = None
+        self.partner_public_key_timestamp = None
 
         self.label = tk.Label(self.window, text=f"{user_name}", font=("Arial", 16))
         self.label.pack(pady=10)
@@ -234,6 +236,7 @@ class WindowECDSA:
 
     def receive_public_key(self, public_key):
         self.partner_public_key = public_key
+        self.partner_public_key_timestamp = time.time()
 
         self.partner_key_output.config(state=tk.NORMAL)
         self.partner_key_output.delete(1.0, tk.END)
@@ -303,10 +306,24 @@ class WindowECDSA:
         message, signature = self.received_message
         r, s = signature
 
-        is_valid = verify_sign(message, (r, s), self.partner_public_key, self.curve)
+        if self.partner_public_key_timestamp is None:
+            messagebox.showerror(
+                "Ошибка", "Публичный ключ отправителя устарел или не обновлён!"
+            )
+            return
 
+        try:
+            is_valid = verify_sign(message, (r, s), self.partner_public_key, self.curve)
+        except Exception as e:
+            messagebox.showerror("Ошибка", f"Ошибка проверки подписи: {str(e)}")
+            return
+        
         self.receive_output.config(state=tk.NORMAL)
+        self.receive_output.delete(1.0, tk.END)
         self.receive_output.insert(
-            tk.END, f"\nПодпись {'действительна' if is_valid else 'недействительна'}!"
+            tk.END,
+            f"Полученное сообщение: {message}\n"
+            f"Подпись: {signature}\n"
+            f"Подпись {'действительна' if is_valid else 'недействительна'}!",
         )
         self.receive_output.config(state=tk.DISABLED)
