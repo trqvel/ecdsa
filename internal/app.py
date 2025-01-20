@@ -181,7 +181,7 @@ class WindowECDSA:
         )
         self.send_public_key_button.pack(pady=5)
 
-        self.partner_key_output = tk.Text(self.window, height=3, width=60)
+        self.partner_key_output = tk.Text(self.window, height=4, width=60)
         self.partner_key_output.pack(pady=10)
         self.partner_key_output.config(state=tk.DISABLED)
 
@@ -196,7 +196,7 @@ class WindowECDSA:
         )
         self.sign_message_button.pack(pady=5)
 
-        self.signature_output = tk.Text(self.window, height=3, width=60)
+        self.signature_output = tk.Text(self.window, height=4, width=60)
         self.signature_output.pack(pady=10)
         self.signature_output.config(state=tk.DISABLED)
 
@@ -223,13 +223,17 @@ class WindowECDSA:
         self.keys_output.delete(1.0, tk.END)
         self.keys_output.insert(
             tk.END,
-            f"Приватный ключ: {self.private_key}\nПубличный ключ: {self.public_key}",
+            f"Приватный ключ (d): {self.private_key}\nПубличный ключ (x, y): {self.public_key}",
         )
         self.keys_output.config(state=tk.DISABLED)
 
     def send_public_key(self):
         if not self.partner_window:
             messagebox.showerror("Ошибка", "Получатель не подключён!")
+            return
+        
+        if not self.private_key or not self.public_key:
+            messagebox.showerror("Ошибка", "Сначала сгенерируйте ключи!")
             return
 
         self.partner_window.receive_public_key(self.public_key)
@@ -269,28 +273,31 @@ class WindowECDSA:
     def send_message(self):
         if not self.partner_window:
             messagebox.showerror("Ошибка", "Получатель не подключён!")
-            return
-
-        if not self.received_message:
-            messagebox.showerror("Ошибка", "Сначала подпишите сообщение!")
-            return
-
-        current_message = self.message_input.get("1.0", tk.END).strip()
-        if not self.received_message or self.received_message[0] != current_message:
-            messagebox.showerror("Ошибка", "Сообщение было изменено без смены подписи!")
-            return
-
-        self.partner_window.receive_message(self.received_message, self.public_key)
+        elif not self.private_key or not self.public_key:
+            messagebox.showerror("Ошибка", "Сначала сгенерируйте ключи!")
+        elif not self.received_message:
+            messagebox.showerror("Ошибка", "Нет подписанного сообщения для отправки!")
+        else:
+            current_message = self.message_input.get("1.0", "end-1c").strip()
+            signed_message, _ = self.received_message
+            
+            if not current_message:
+                messagebox.showerror("Ошибка", "Сообщение для отправки отсутствует!")
+            elif current_message != signed_message:
+                messagebox.showerror("Ошибка", "Текущее сообщение не соответствует подписанному!")
+            else:
+                self.partner_window.receive_message(self.received_message, self.public_key)
 
     def receive_message(self, received_message, sender_public_key):
         self.received_message = received_message
         self.sender_public_key = sender_public_key
         message, signature = received_message
+        r, s = signature
 
         self.receive_output.config(state=tk.NORMAL)
         self.receive_output.delete(1.0, tk.END)
         self.receive_output.insert(
-            tk.END, f"Полученное сообщение: {message}\nПодпись: {signature}"
+            tk.END, f"Полученное сообщение: {message}\nПодпись: r={r}, s={s}"
         )
         self.receive_output.config(state=tk.DISABLED)
 
@@ -323,7 +330,7 @@ class WindowECDSA:
         self.receive_output.insert(
             tk.END,
             f"Полученное сообщение: {message}\n"
-            f"Подпись: {signature}\n"
+            f"Подпись: r={r}, s={s}\n"
             f"Подпись {'действительна' if is_valid else 'недействительна'}!",
         )
         self.receive_output.config(state=tk.DISABLED)

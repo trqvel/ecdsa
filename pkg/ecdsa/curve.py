@@ -71,7 +71,7 @@ def multScalar(k, P, curve):
 def genRandom(a, b):
     while True:
         h = hash(str(datetime.datetime.now())) % b
-        if a <= h < b:
+        if a <= h < b and h % 2 == 1:
             return h
 
 def generate_keys(curve):
