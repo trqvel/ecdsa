@@ -4,6 +4,7 @@ from tkinter import messagebox
 from pkg.prime.generate import generate_prime
 from pkg.prime.checking import trial_division_method, test_miller_rabin
 from pkg.ecdsa.curve import curveNIST256p, generate_keys
+from pkg.ecdsa.message import hash_message
 from pkg.ecdsa.sign import sign_message
 from pkg.ecdsa.verify import verify_sign
 
@@ -155,14 +156,16 @@ class WindowECDSA:
     def __init__(self, root, user_name):
         self.window = tk.Toplevel(root)
         self.window.title(user_name)
-        self.window.geometry("700x800")
+        self.window.geometry("700x910")
 
         self.curve = curveNIST256p()
         self.private_key, self.public_key = None, None
         self.received_message = None
+        self.last_signed_message = None
         self.partner_window = None
         self.partner_public_key = None
         self.partner_public_key_timestamp = None
+        self.message_hash = None
 
         self.label = tk.Label(self.window, text=f"{user_name}", font=("Arial", 16))
         self.label.pack(pady=10)
@@ -190,6 +193,15 @@ class WindowECDSA:
 
         self.message_input = tk.Text(self.window, height=3, width=40)
         self.message_input.pack(pady=5)
+
+        self.hash_button = tk.Button(
+            self.window, text="Вычислить хэш сообщения", command=self.compute_hash
+        )
+        self.hash_button.pack(pady=5)
+
+        self.hash_output = tk.Text(self.window, height=3, width=40)
+        self.hash_output.pack(pady=10)
+        self.hash_output.config(state=tk.DISABLED)
 
         self.sign_message_button = tk.Button(
             self.window, text="Подписать сообщение", command=self.sign_message
@@ -231,7 +243,7 @@ class WindowECDSA:
         if not self.partner_window:
             messagebox.showerror("Ошибка", "Получатель не подключён!")
             return
-        
+
         if not self.private_key or not self.public_key:
             messagebox.showerror("Ошибка", "Сначала сгенерируйте ключи!")
             return
@@ -249,44 +261,76 @@ class WindowECDSA:
         )
         self.partner_key_output.config(state=tk.DISABLED)
 
-    def sign_message(self):
+    def compute_hash(self):
+        if not self.private_key or not self.public_key:
+            messagebox.showerror("Ошибка", "Сначала сгенерируйте ключи!")
+            return
+
         message = self.message_input.get("1.0", tk.END).strip()
         if not message:
-            messagebox.showerror("Ошибка", "Введите сообщение для подписи!")
+            messagebox.showerror("Ошибка", "Введите сообщение для вычисления хэша!")
             return
+
         try:
-            r, s = sign_message(message, self.private_key, self.curve)
+            self.message_hash = hash_message(message)
+        except ValueError as e:
+            messagebox.showerror("Ошибка", str(e))
+            return
+
+        self.hash_output.config(state=tk.NORMAL)
+        self.hash_output.delete(1.0, tk.END)
+        self.hash_output.insert(tk.END, f"Хэш сообщения (SHA256): {self.message_hash}")
+        self.hash_output.config(state=tk.DISABLED)
+
+    def sign_message(self):
+        if not self.message_hash:
+            messagebox.showerror("Ошибка", "Сначала вычислите хэш сообщения!")
+            return
+
+        current_message = self.message_input.get("1.0", tk.END).strip()
+        if hash_message(current_message) != self.message_hash:
+            messagebox.showerror(
+                "Ошибка", "Сообщение изменилось, пересчитайте хэш перед подписью!"
+            )
+            return
+
+        try:
+            r, s = sign_message(self.message_hash, self.private_key, self.curve)
         except ValueError as e:
             messagebox.showerror("Ошибка", str(e))
             return
 
         signature = (r, s)
-
+        self.last_signed_message = (current_message, (r, s))
         self.signature_output.config(state=tk.NORMAL)
         self.signature_output.delete(1.0, tk.END)
         self.signature_output.insert(
             tk.END, f"Подпись: r={r}, s={s}"
         )
         self.signature_output.config(state=tk.DISABLED)
-        self.received_message = (message, signature)
+        self.received_message = (current_message, signature)
 
     def send_message(self):
         if not self.partner_window:
             messagebox.showerror("Ошибка", "Получатель не подключён!")
-        elif not self.private_key or not self.public_key:
+            return
+
+        if not self.private_key or not self.public_key:
             messagebox.showerror("Ошибка", "Сначала сгенерируйте ключи!")
-        elif not self.received_message:
+            return
+
+        if not self.last_signed_message:
             messagebox.showerror("Ошибка", "Нет подписанного сообщения для отправки!")
-        else:
-            current_message = self.message_input.get("1.0", "end-1c").strip()
-            signed_message, _ = self.received_message
-            
-            if not current_message:
-                messagebox.showerror("Ошибка", "Сообщение для отправки отсутствует!")
-            elif current_message != signed_message:
-                messagebox.showerror("Ошибка", "Текущее сообщение не соответствует подписанному!")
-            else:
-                self.partner_window.receive_message(self.received_message, self.public_key)
+            return
+
+        current_message = self.message_input.get("1.0", "end-1c").strip()
+        signed_message, signature = self.last_signed_message
+
+        if current_message != signed_message:
+            messagebox.showerror("Ошибка", "Подписанное сообщение отличается от текущего!")
+            return
+
+        self.partner_window.receive_message(self.last_signed_message, self.public_key)
 
     def receive_message(self, received_message, sender_public_key):
         self.received_message = received_message
@@ -320,7 +364,7 @@ class WindowECDSA:
             return
 
         try:
-            is_valid = verify_sign(message, (r, s), self.partner_public_key, self.curve)
+            is_valid = verify_sign(hash_message(message), (r, s), self.partner_public_key, self.curve)
         except Exception as e:
             messagebox.showerror("Ошибка", f"Ошибка проверки подписи: {str(e)}")
             return
