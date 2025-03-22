@@ -1,18 +1,29 @@
 import datetime
+import time
 
+
+def time_entropy_32bits():
+    t1 = time.perf_counter_ns()
+    x = 1
+    for _ in range(1000):
+        x ^= (x << 13) & 0xffffffff
+        x ^= (x >> 17)
+        x ^= (x << 5) & 0xffffffff
+    t2 = time.perf_counter_ns()
+    datetime_str = str(datetime.datetime.now())
+    combined = hash((t1, t2, x, datetime_str))
+    return combined & ((1 << 32) - 1)
 
 def genRandom(a, b):
     while True:
-        h = hash(str(datetime.datetime.now())) % b
-        if a <= h < b:
-            return h
+        r = time_entropy_32bits() % b
+        if a <= r < b:
+            return r
 
 def gen512():
     bits = 0
-    for _ in range(512):
-        bits <<= 1
-        bit_val = genRandom(0, 2)
-        bits |= bit_val
+    for _ in range(16):
+        bits = (bits << 32) | time_entropy_32bits()
     bits |= (1 << 511)
     bits |= 1
     return bits

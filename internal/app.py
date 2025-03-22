@@ -41,7 +41,30 @@ class App:
 class PrimeWindow:
     def __init__(self, root):
         self.window = tk.Toplevel(root)
-        self.window.title("Работа с простыми числами")
+        self.window.title("Меню простых чисел")
+        self.window.geometry("400x120")
+
+        self.gen_button = tk.Button(
+            self.window, text="Тестирование случайных чисел", command=self.open_generate_window
+        )
+        self.gen_button.pack(pady=10)
+
+        self.user_button = tk.Button(
+            self.window, text="Тестирование пользовательских чисел", command=self.open_user_window
+        )
+        self.user_button.pack(pady=10)
+
+    def open_generate_window(self):
+        GeneratePrimeWindow(self.window)
+
+    def open_user_window(self):
+        UserPrimeWindow(self.window)
+
+
+class GeneratePrimeWindow:
+    def __init__(self, root):
+        self.window = tk.Toplevel(root)
+        self.window.title("Тестирование случайных чисел")
         self.window.geometry("500x300")
 
         self.last_generated_prime = None
@@ -57,7 +80,7 @@ class PrimeWindow:
         self.generate_button.pack(pady=5)
 
         self.check_button = tk.Button(
-            self.window, text="Проверить число на простоту", command=self.open_check_window
+            self.window, text="Проверить число на простоту", command=self.generate_check_window
         )
         self.check_button.pack(pady=5)
 
@@ -75,11 +98,41 @@ class PrimeWindow:
         )
         self.output_text.config(state=tk.DISABLED)
 
-    def open_check_window(self):
+    def generate_check_window(self):
         if not self.last_generated_prime:
             messagebox.showerror("Ошибка", "Сначала сгенерируйте число!")
             return
         PrimeCheckWindow(self.window, self.last_generated_prime)
+
+
+class UserPrimeWindow:
+    def __init__(self, root):
+        self.window = tk.Toplevel(root)
+        self.window.title("Тестирование пользовательских чисел")
+        self.window.geometry("500x140")
+
+        self.label = tk.Label(self.window, text="Введите число:")
+        self.label.pack(pady=5)
+
+        self.entry = tk.Entry(self.window, width=30)
+        self.entry.pack(pady=5)
+
+        self.check_button = tk.Button(
+            self.window, text="Проверить число на простоту", command=self.on_check
+        )
+        self.check_button.pack(pady=10)
+
+    def on_check(self):
+        val = self.entry.get().strip()
+        if not val:
+            messagebox.showerror("Ошибка", "Сначала введите число!")
+            return
+        try:
+            user_number = int(val)
+        except ValueError:
+            messagebox.showerror("Ошибка", f"{val} не является целым числом!")
+            return
+        PrimeCheckWindow(self.window, user_number)
 
 
 class PrimeCheckWindow:
@@ -100,16 +153,21 @@ class PrimeCheckWindow:
         )
         self.trial_frame.pack(pady=10, fill="x", padx=20)
 
-        self.trial_input = tk.Entry(self.trial_frame)
-        self.trial_input.pack(pady=5)
-        self.trial_input.insert(0, "1")
+        self.trial_label = tk.Label(self.trial_frame, text="Введите 5 оснований для метода пробных делений:")
+        self.trial_label.pack()
+
+        self.trial_entries = []
+        entries_frame = tk.Frame(self.trial_frame)
+        entries_frame.pack(pady=5)
+        for _ in range(5):
+            e = tk.Entry(entries_frame, width=5)
+            e.pack(side=tk.LEFT, padx=5)
+            self.trial_entries.append(e)
 
         self.trial_button = tk.Button(
-            self.trial_frame,
-            text="Проверить методом пробных делений",
-            command=self.check_trial_division,
+            self.trial_frame, text="Проверить методом пробных делений", command=self.check_trial_division,
         )
-        self.trial_button.pack()
+        self.trial_button.pack(pady=5)
 
         self.mr_frame = tk.LabelFrame(
             self.window, text="Тест Миллера-Рабина", padx=10, pady=10
@@ -121,9 +179,7 @@ class PrimeCheckWindow:
         self.mr_input.insert(0, "1")
 
         self.mr_button = tk.Button(
-            self.mr_frame,
-            text="Проверить тестом Миллера-Рабина",
-            command=self.check_mr,
+            self.mr_frame, text="Проверить тестом Миллера-Рабина", command=self.check_mr,
         )
         self.mr_button.pack()
 
@@ -133,23 +189,65 @@ class PrimeCheckWindow:
 
     def check_trial_division(self):
         try:
-            max_primes = int(self.trial_input.get())
-            result = trial_division_method(self.number, max_primes)
+            raw_values = []
+            for entry in self.trial_entries:
+                val = entry.get().strip()
+                if not val:
+                    raise ValueError("Есть пустые поля для оснований. Заполните все 5 полей!")
+                raw_values.append(val)
+
+            bases = []
+            for val in raw_values:
+                if not val.isdigit():
+                    raise ValueError(f"{val} не является целым числом!")
+                
+                base_int = int(val)
+                bases.append(base_int)
+
+            if len(set(bases)) != 5:
+                raise ValueError("Все 5 оснований должны быть различными!")
+
+            for b in bases:
+                if b == 0:
+                    raise ValueError("Основания не могут равняться нулю!")
+                
+            for b in bases:
+                if b == 1:
+                    raise ValueError("Основания не могут равняться единице!")
+
+            for b in bases:
+                if b < 0:
+                    raise ValueError("Все основания должны быть положительными!")
+
+            result = trial_division_method(self.number, bases)
+
             self.result_text.config(state=tk.NORMAL)
             self.result_text.insert(tk.END, f"Метод пробных делений:\n{result}\n\n")
             self.result_text.config(state=tk.DISABLED)
+
         except ValueError as e:
-            messagebox.showerror("Ошибка", f"Ошибка: {str(e)}")
+            messagebox.showerror("Ошибка", f"{str(e)}")
 
     def check_mr(self):
         try:
-            k = int(self.mr_input.get())
+            val = self.mr_input.get().strip()
+            if not val:
+                raise ValueError("Поле для количества раундов не должно быть пустым!")
+            if not val.isdigit():
+                raise ValueError(f"{val} не является целым числом!")
+            
+            k = int(val)
+            if k <= 0:
+                raise ValueError("Кол-во раундов должно быть положительным числом!")
+            if k > 20:
+                raise ValueError("Не могу осуществить проверку с более чем 20 раундами в тесте Миллера-Рабина!")
+            
             result = test_miller_rabin(self.number, k)
             self.result_text.config(state=tk.NORMAL)
             self.result_text.insert(tk.END, f"Тест Миллера-Рабина:\n{result}\n\n")
             self.result_text.config(state=tk.DISABLED)
         except ValueError as e:
-            messagebox.showerror("Ошибка", f"Ошибка: {str(e)}")
+            messagebox.showerror("Ошибка", f"{str(e)}")
 
 
 class WindowECDSA:

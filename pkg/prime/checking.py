@@ -1,29 +1,20 @@
-def trial_division_method(number, max_primes):
-    if number <= 0:
-        raise ValueError("Число для проверки методом пробных делений должно быть натуральным!")
-    if max_primes <= 0:
-        raise ValueError("Введите натуральное число!")
-    if max_primes > 25:
-        raise ValueError("Не могу осуществить проверку с более чем 25 простыми числами!")
+def trial_division_method(number, bases):
+    arr = []
+    for b in bases:
+        if number % b == 0:
+            arr.append(b)
 
-    primes = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97]
-
-    if max_primes < len(primes):
-        primes = primes[:max_primes]
-    for p in primes:
-        if number % p == 0:
-            return f"Число {number} делится на {p}. Не является простым!"
-    return f"Число {number} успешно прошло тест пробных делений!"
+    if arr:
+        base = ", ".join(map(str, arr))
+        return f"Число {number} составное, так как делится на основани(е/я): {base}."
+    else:
+        return f"Число {number} простое! Метод пробных делений успешно пройден!"
 
 def test_miller_rabin(number, k):
     if number <= 1:
         return f"Число {number} не является простым."
-    if k <= 0:
-        raise ValueError("Число оснований для теста Миллера-Рабина должно быть натуральным!")
-    if k > 20:
-        raise ValueError("Не могу осуществить проверку с более чем 20 основаниями в тесте Миллера-Рабина!")
 
-    det_bases = [101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 179, 181, 191, 193, 197]
+    det_bases = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71]
     bases = det_bases[:k]
 
     for p in bases:
@@ -51,12 +42,13 @@ def test_miller_rabin(number, k):
                 return True
         return False
 
-    fail_bases = []
+    arr = []
     for a in bases:
         if not check_base(a):
-            fail_bases.append(a)
+            arr.append(a)
 
-    if fail_bases:
-        return (f"Число {number} не прошло тест Миллера-Рабина: {fail_bases}!")
+    if arr:
+        base = ", ".join(map(str, arr))
+        return (f"Число {number} не прошло тест Миллера-Рабина! Провалена проверка при основани(и/ях): {base}!")
     else:
         return (f"Число {number} успешно прошло тест Миллера-Рабина!")
